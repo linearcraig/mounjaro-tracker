@@ -1,0 +1,1028 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  TrendingDown, 
+  Syringe, 
+  Scale, 
+  Calendar, 
+  Activity, 
+  CheckCircle2, 
+  Award, 
+  Plus, 
+  Trash2, 
+  Download, 
+  RefreshCw, 
+  Target, 
+  Pill, 
+  HeartPulse, 
+  ChevronRight, 
+  Info, 
+  Sparkles, 
+  Clock, 
+  Sliders,
+  BarChart2,
+  ArrowDownRight,
+  Zap,
+  User,
+  ShieldCheck
+} from 'lucide-react';
+
+// Initial dataset imported directly from user's uploaded Mounjaro CSV files
+const INITIAL_LOGS = [
+  { id: '1', date: '2026-06-16', weightLbs: 241.4, jab: 1, dose: '2.5mg', notes: 'First Mounjaro injection' },
+  { id: '2', date: '2026-06-17', weightLbs: 241.4, jab: null, dose: '', notes: '' },
+  { id: '3', date: '2026-06-18', weightLbs: 240.3, jab: null, dose: '', notes: 'Feeling slightly less hungry' },
+  { id: '4', date: '2026-06-19', weightLbs: 237.7, jab: null, dose: '', notes: '' },
+  { id: '5', date: '2026-06-20', weightLbs: 236.1, jab: null, dose: '', notes: '' },
+  { id: '6', date: '2026-06-21', weightLbs: 236.1, jab: null, dose: '', notes: 'Stable day' },
+  { id: '7', date: '2026-06-22', weightLbs: 235.6, jab: null, dose: '', notes: '' },
+  { id: '8', date: '2026-06-23', weightLbs: 235.0, jab: 2, dose: '2.5mg', notes: 'Second jab in thigh' },
+  { id: '9', date: '2026-06-24', weightLbs: 234.8, jab: null, dose: '', notes: '' },
+  { id: '10', date: '2026-06-25', weightLbs: 234.2, jab: null, dose: '', notes: '' },
+  { id: '11', date: '2026-06-26', weightLbs: 233.9, jab: null, dose: '', notes: '' },
+  { id: '12', date: '2026-06-27', weightLbs: 233.5, jab: null, dose: '', notes: '' },
+  { id: '13', date: '2026-06-28', weightLbs: 233.1, jab: null, dose: '', notes: '' },
+  { id: '14', date: '2026-06-29', weightLbs: 232.8, jab: null, dose: '', notes: '' },
+  { id: '15', date: '2026-06-30', weightLbs: 232.4, jab: 3, dose: '2.5mg', notes: 'Jab 3 administered' },
+  { id: '16', date: '2026-07-01', weightLbs: 232.0, jab: null, dose: '', notes: '' },
+  { id: '17', date: '2026-07-02', weightLbs: 231.5, jab: null, dose: '', notes: '' },
+  { id: '18', date: '2026-07-03', weightLbs: 231.2, jab: null, dose: '', notes: '' },
+  { id: '19', date: '2026-07-04', weightLbs: 230.8, jab: null, dose: '', notes: 'Good energy levels' },
+  { id: '20', date: '2026-07-05', weightLbs: 230.5, jab: null, dose: '', notes: '' },
+  { id: '21', date: '2026-07-06', weightLbs: 230.1, jab: null, dose: '', notes: '' },
+  { id: '22', date: '2026-07-07', weightLbs: 229.8, jab: 4, dose: '2.5mg', notes: 'Jab 4 complete' },
+  { id: '23', date: '2026-07-08', weightLbs: 229.5, jab: null, dose: '', notes: '' },
+  { id: '24', date: '2026-07-09', weightLbs: 229.2, jab: null, dose: '', notes: '' },
+  { id: '25', date: '2026-07-10', weightLbs: 228.9, jab: null, dose: '', notes: '' },
+  { id: '26', date: '2026-07-11', weightLbs: 228.6, jab: null, dose: '', notes: '' },
+  { id: '27', date: '2026-07-12', weightLbs: 228.4, jab: null, dose: '', notes: '' },
+  { id: '28', date: '2026-07-13', weightLbs: 228.1, jab: null, dose: '', notes: '' },
+  { id: '29', date: '2026-07-14', weightLbs: 227.8, jab: 5, dose: '2.5mg', notes: 'Jab 5 - end of month 1' },
+  { id: '30', date: '2026-07-15', weightLbs: 227.5, jab: null, dose: '', notes: '' },
+  { id: '31', date: '2026-07-16', weightLbs: 227.2, jab: null, dose: '', notes: '' },
+  { id: '32', date: '2026-07-17', weightLbs: 227.0, jab: 6, dose: '2.5mg', notes: 'Jab 6 administered' },
+  { id: '33', date: '2026-07-18', weightLbs: 226.7, jab: null, dose: '', notes: '' },
+  { id: '34', date: '2026-07-19', weightLbs: 226.4, jab: null, dose: '', notes: '' },
+  { id: '35', date: '2026-07-20', weightLbs: 226.1, jab: null, dose: '', notes: '' },
+  { id: '36', date: '2026-07-21', weightLbs: 225.8, jab: null, dose: '', notes: '' },
+  { id: '37', date: '2026-07-22', weightLbs: 225.5, jab: null, dose: '', notes: '' },
+  { id: '38', date: '2026-07-23', weightLbs: 225.3, jab: null, dose: '', notes: '' },
+  { id: '39', date: '2026-07-24', weightLbs: 225.2, jab: 7, dose: '2.5mg', notes: 'Jab 7 recorded' }
+];
+
+// Tirzepatide elimination half-life constant (~5 days)
+const HALF_LIFE_DAYS = 5;
+const DAILY_DECAY_FACTOR = Math.pow(0.5, 1 / HALF_LIFE_DAYS); // ~0.87055
+
+export default function App() {
+  // State variables
+  const [logs, setLogs] = useState(INITIAL_LOGS);
+  const [targetWeightLbs, setTargetWeightLbs] = useState(188.0);
+  const [userHeightCm, setUserHeightCm] = useState(173); // ~5ft 8in default
+  const [unit, setUnit] = useState('lbs'); // 'lbs', 'kg', 'st'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'logs', 'kinetics', 'insights'
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+
+  // Form State
+  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formWeight, setFormWeight] = useState('');
+  const [formIsJab, setFormIsJab] = useState(false);
+  const [formDose, setFormDose] = useState('2.5mg');
+  const [formNotes, setFormNotes] = useState('');
+
+  // Calculate processed dataset with estimated drug concentration & changes
+  const processedLogs = useMemo(() => {
+    // Sort chronologically
+    const sorted = [...logs].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    let runningMedLevel = 0;
+    const startWeight = sorted[0]?.weightLbs || 241.4;
+
+    return sorted.map((entry, index) => {
+      // Calculate medication decay from previous day
+      if (index > 0) {
+        const prevDate = new Date(sorted[index - 1].date);
+        const currDate = new Date(entry.date);
+        const diffDays = Math.max(1, Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24)));
+        runningMedLevel = runningMedLevel * Math.pow(DAILY_DECAY_FACTOR, diffDays);
+      }
+
+      // Add new dose if jab administered
+      let doseMg = 0;
+      if (entry.jab) {
+        doseMg = parseFloat(entry.dose?.replace('mg', '') || '2.5');
+        runningMedLevel += doseMg;
+      }
+
+      const prevWeight = index > 0 ? sorted[index - 1].weightLbs : entry.weightLbs;
+      const dailyChange = entry.weightLbs - prevWeight;
+      const totalLost = startWeight - entry.weightLbs;
+      const toLose = entry.weightLbs - targetWeightLbs;
+
+      return {
+        ...entry,
+        doseMg,
+        estMedInSystem: parseFloat(runningMedLevel.toFixed(2)),
+        dailyChange: parseFloat(dailyChange.toFixed(1)),
+        totalLost: parseFloat(totalLost.toFixed(1)),
+        toLose: parseFloat(toLose.toFixed(1)),
+        startWeight
+      };
+    });
+  }, [logs, targetWeightLbs]);
+
+  // Derived current metrics
+  const latestEntry = processedLogs[processedLogs.length - 1] || processedLogs[0];
+  const startWeight = processedLogs[0]?.weightLbs || 241.4;
+  const currentWeight = latestEntry.weightLbs;
+  const totalLost = startWeight - currentWeight;
+  const toLose = currentWeight - targetWeightLbs;
+  const percentComplete = Math.min(100, Math.max(0, (totalLost / (startWeight - targetWeightLbs)) * 100));
+
+  // BMI calculations
+  const heightMeters = userHeightCm / 100;
+  const currentWeightKg = currentWeight * 0.45359237;
+  const currentBmi = (currentWeightKg / (heightMeters * heightMeters)).toFixed(1);
+  
+  const getBmiCategory = (bmi) => {
+    if (bmi < 18.5) return { category: 'Underweight', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' };
+    if (bmi < 25.0) return { category: 'Normal', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' };
+    if (bmi < 30.0) return { category: 'Overweight', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' };
+    return { category: 'Obese', color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200' };
+  };
+
+  const bmiMeta = getBmiCategory(currentBmi);
+
+  // Unit conversion helper
+  const formatWeight = (lbsValue, formatUnit = unit) => {
+    if (lbsValue === undefined || lbsValue === null || isNaN(lbsValue)) return '--';
+    if (formatUnit === 'kg') {
+      return (lbsValue * 0.45359237).toFixed(1) + ' kg';
+    }
+    if (formatUnit === 'st') {
+      const totalLbs = Math.round(lbsValue * 10) / 10;
+      const stones = Math.floor(totalLbs / 14);
+      const remLbs = (totalLbs % 14).toFixed(1);
+      return `${stones} st ${remLbs} lbs`;
+    }
+    return lbsValue.toFixed(1) + ' lbs';
+  };
+
+  // Add or edit entry submit handler
+  const handleSaveEntry = (e) => {
+    e.preventDefault();
+    if (!formWeight || isNaN(parseFloat(formWeight))) return;
+
+    const weightVal = parseFloat(formWeight);
+    const highestJabNumber = Math.max(0, ...logs.map(l => l.jab || 0));
+
+    if (editingEntry) {
+      setLogs(logs.map(l => l.id === editingEntry.id ? {
+        ...l,
+        date: formDate,
+        weightLbs: weightVal,
+        jab: formIsJab ? (editingEntry.jab || highestJabNumber + 1) : null,
+        dose: formIsJab ? formDose : '',
+        notes: formNotes
+      } : l));
+    } else {
+      const newEntry = {
+        id: Date.now().toString(),
+        date: formDate,
+        weightLbs: weightVal,
+        jab: formIsJab ? highestJabNumber + 1 : null,
+        dose: formIsJab ? formDose : '',
+        notes: formNotes
+      };
+      setLogs([...logs, newEntry]);
+    }
+
+    // Reset form
+    setShowAddModal(false);
+    setEditingEntry(null);
+    setFormWeight('');
+    setFormNotes('');
+    setFormIsJab(false);
+  };
+
+  const handleDeleteEntry = (id) => {
+    if (window.confirm('Are you sure you want to delete this daily log entry?')) {
+      setLogs(logs.filter(l => l.id !== id));
+    }
+  };
+
+  const openAddModal = (entryToEdit = null) => {
+    if (entryToEdit) {
+      setEditingEntry(entryToEdit);
+      setFormDate(entryToEdit.date);
+      setFormWeight(entryToEdit.weightLbs.toString());
+      setFormIsJab(!!entryToEdit.jab);
+      setFormDose(entryToEdit.dose || '2.5mg');
+      setFormNotes(entryToEdit.notes || '');
+    } else {
+      setEditingEntry(null);
+      setFormDate(new Date().toISOString().split('T')[0]);
+      setFormWeight('');
+      setFormIsJab(false);
+      setFormDose('2.5mg');
+      setFormNotes('');
+    }
+    setShowAddModal(true);
+  };
+
+  // Export dataset to CSV
+  const exportToCSV = () => {
+    const headers = ['Date', 'Weight (lbs)', 'Change (Daily)', 'Total Lost', 'To Lose', 'Jab Number', 'Dose', 'Est Med in System (mg)', 'Notes'];
+    const csvRows = processedLogs.map(l => [
+      l.date,
+      l.weightLbs,
+      l.dailyChange,
+      l.totalLost,
+      l.toLose,
+      l.jab || '',
+      l.dose || '',
+      l.estMedInSystem,
+      `"${(l.notes || '').replace(/"/g, '""')}"`
+    ].join(','));
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...csvRows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Mounjaro_Tracker_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // SVG Chart rendering geometry helpers
+  const chartHeight = 220;
+  const chartWidth = 700;
+  const padding = 40;
+
+  const minWeight = useMemo(() => Math.floor(Math.min(...processedLogs.map(l => l.weightLbs), targetWeightLbs) - 5), [processedLogs, targetWeightLbs]);
+  const maxWeight = useMemo(() => Math.ceil(Math.max(...processedLogs.map(l => l.weightLbs)) + 5), [processedLogs]);
+
+  const maxMed = useMemo(() => Math.ceil(Math.max(...processedLogs.map(l => l.estMedInSystem), 5) * 1.2), [processedLogs]);
+
+  const getX = (index) => padding + (index / Math.max(1, processedLogs.length - 1)) * (chartWidth - padding * 2);
+  const getYWeight = (val) => chartHeight - padding - ((val - minWeight) / (maxWeight - minWeight)) * (chartHeight - padding * 2);
+  const getYMed = (val) => chartHeight - padding - (val / maxMed) * (chartHeight - padding * 2);
+
+  const weightPath = processedLogs.map((l, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getYWeight(l.weightLbs)}`).join(' ');
+  const medPath = processedLogs.map((l, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getYMed(l.estMedInSystem)}`).join(' ');
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-12">
+      {/* Header Bar */}
+      <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 sm:px-6">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/20">
+                <Syringe className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white tracking-tight leading-none">Mounjaro Tracker</h1>
+                <p className="text-xs text-slate-400 mt-0.5">Tirzepatide Clinical Weight Loss Analytics</p>
+              </div>
+            </div>
+            {/* Mobile quick add button */}
+            <button 
+              onClick={() => openAddModal()}
+              className="sm:hidden bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold p-2 rounded-lg flex items-center gap-1 text-xs"
+            >
+              <Plus className="w-4 h-4" /> Log
+            </button>
+          </div>
+
+          {/* Unit Toggle & Quick Controls */}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <div className="bg-slate-800/80 p-1 rounded-lg border border-slate-700/60 flex items-center gap-1 text-xs font-medium text-slate-300">
+              <button
+                onClick={() => setUnit('lbs')}
+                className={`px-2.5 py-1 rounded-md transition ${unit === 'lbs' ? 'bg-emerald-500 text-slate-950 font-bold shadow' : 'hover:text-white'}`}
+              >
+                lbs
+              </button>
+              <button
+                onClick={() => setUnit('kg')}
+                className={`px-2.5 py-1 rounded-md transition ${unit === 'kg' ? 'bg-emerald-500 text-slate-950 font-bold shadow' : 'hover:text-white'}`}
+              >
+                kg
+              </button>
+              <button
+                onClick={() => setUnit('st')}
+                className={`px-2.5 py-1 rounded-md transition ${unit === 'st' ? 'bg-emerald-500 text-slate-950 font-bold shadow' : 'hover:text-white'}`}
+              >
+                st lbs
+              </button>
+            </div>
+
+            <button
+              onClick={() => openAddModal()}
+              className="hidden sm:flex bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-1.5 rounded-lg items-center gap-1.5 text-xs transition shadow-lg shadow-emerald-500/10"
+            >
+              <Plus className="w-4 h-4" /> Log Weight
+            </button>
+
+            <button
+              onClick={exportToCSV}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg border border-slate-700 text-xs transition"
+              title="Export to CSV"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+
+        {/* Primary KPI Summary Cards Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
+          {/* Card 1: Current Weight */}
+          <div className="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+              <span>Current Weight</span>
+              <Scale className="w-4 h-4 text-teal-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              {formatWeight(currentWeight)}
+            </div>
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+              <ArrowDownRight className="w-3.5 h-3.5" />
+              <span>-{(processedLogs[processedLogs.length - 2] ? (processedLogs[processedLogs.length - 2].weightLbs - currentWeight).toFixed(1) : '0.0')} lbs last update</span>
+            </div>
+          </div>
+
+          {/* Card 2: Total Weight Lost */}
+          <div className="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+              <span>Total Lost</span>
+              <TrendingDown className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight">
+              {formatWeight(totalLost)}
+            </div>
+            <div className="mt-2 text-xs text-slate-400">
+              Start: <span className="text-slate-200 font-medium">{formatWeight(startWeight)}</span>
+            </div>
+          </div>
+
+          {/* Card 3: Est. Drug in System */}
+          <div className="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+              <span>Est. Med in System</span>
+              <Activity className="w-4 h-4 text-indigo-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-indigo-300 tracking-tight">
+              {latestEntry.estMedInSystem} <span className="text-sm font-semibold text-indigo-400">mg</span>
+            </div>
+            <div className="mt-2 text-xs text-indigo-400 flex items-center gap-1 font-medium">
+              <Zap className="w-3.5 h-3.5 fill-indigo-400/20" />
+              <span>Jab #{latestEntry.jab || 'Recent'} ({latestEntry.dose || '2.5mg'})</span>
+            </div>
+          </div>
+
+          {/* Card 4: Target Progress */}
+          <div className="bg-slate-800/60 border border-slate-700/70 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-1">
+              <span>To Goal ({formatWeight(targetWeightLbs)})</span>
+              <Target className="w-4 h-4 text-rose-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              {formatWeight(toLose)}
+            </div>
+            <div className="mt-2 w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-teal-400 to-emerald-400 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${percentComplete}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 border-b border-slate-800 pb-3 mb-6 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`px-4 py-2 rounded-xl font-medium text-xs sm:text-sm flex items-center gap-2 transition whitespace-nowrap ${
+              activeTab === 'dashboard' 
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+            }`}
+          >
+            <BarChart2 className="w-4 h-4" /> Overview & Charts
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`px-4 py-2 rounded-xl font-medium text-xs sm:text-sm flex items-center gap-2 transition whitespace-nowrap ${
+              activeTab === 'logs' 
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+            }`}
+          >
+            <Calendar className="w-4 h-4" /> Daily Log ({processedLogs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('kinetics')}
+            className={`px-4 py-2 rounded-xl font-medium text-xs sm:text-sm flex items-center gap-2 transition whitespace-nowrap ${
+              activeTab === 'kinetics' 
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+            }`}
+          >
+            <Activity className="w-4 h-4" /> Drug Level Simulator
+          </button>
+          <button
+            onClick={() => setActiveTab('insights')}
+            className={`px-4 py-2 rounded-xl font-medium text-xs sm:text-sm flex items-center gap-2 transition whitespace-nowrap ${
+              activeTab === 'insights' 
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" /> Clinical Insights
+          </button>
+        </div>
+
+        {/* TAB 1: DASHBOARD & CHARTS */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            
+            {/* Weight Loss & Medication Trend Dual Chart */}
+            <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 shadow-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <TrendingDown className="w-5 h-5 text-emerald-400" />
+                    Weight Loss Trend vs. Active Tirzepatide Level
+                  </h2>
+                  <p className="text-xs text-slate-400">Green line represents weight trajectory. Purple line shows active medication in body.</p>
+                </div>
+                <div className="flex items-center gap-4 text-xs font-medium">
+                  <span className="flex items-center gap-1.5 text-emerald-400">
+                    <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span> Weight (lbs)
+                  </span>
+                  <span className="flex items-center gap-1.5 text-indigo-400">
+                    <span className="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span> Active Med (mg)
+                  </span>
+                  <span className="flex items-center gap-1.5 text-rose-400">
+                    <span className="w-3 h-0.5 bg-rose-400 inline-block border-t border-dashed border-rose-400"></span> Target ({targetWeightLbs} lbs)
+                  </span>
+                </div>
+              </div>
+
+              {/* Interactive SVG Chart */}
+              <div className="w-full overflow-x-auto">
+                <svg 
+                  viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
+                  className="w-full h-auto min-w-[550px] overflow-visible"
+                >
+                  {/* Horizontal Grid lines */}
+                  {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                    const yVal = chartHeight - padding - ratio * (chartHeight - padding * 2);
+                    const weightMark = Math.round(minWeight + ratio * (maxWeight - minWeight));
+                    return (
+                      <g key={idx}>
+                        <line x1={padding} y1={yVal} x2={chartWidth - padding} y2={yVal} stroke="#334155" strokeDasharray="3 3" strokeWidth="1" />
+                        <text x={padding - 8} y={yVal + 3} fill="#94a3b8" fontSize="9" textAnchor="end">{weightMark}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Target Weight Dashed Line */}
+                  {targetWeightLbs >= minWeight && targetWeightLbs <= maxWeight && (
+                    <line 
+                      x1={padding} 
+                      y1={getYWeight(targetWeightLbs)} 
+                      x2={chartWidth - padding} 
+                      y2={getYWeight(targetWeightLbs)} 
+                      stroke="#f43f5e" 
+                      strokeWidth="1.5" 
+                      strokeDasharray="4 4" 
+                    />
+                  )}
+
+                  {/* Active Medication Path (Purple Area/Line) */}
+                  <path 
+                    d={medPath} 
+                    fill="none" 
+                    stroke="#818cf8" 
+                    strokeWidth="2" 
+                    strokeOpacity="0.8" 
+                  />
+
+                  {/* Weight Path (Green Gradient Line) */}
+                  <path 
+                    d={weightPath} 
+                    fill="none" 
+                    stroke="#34d399" 
+                    strokeWidth="3" 
+                  />
+
+                  {/* Data Points & Jab Markers */}
+                  {processedLogs.map((entry, i) => {
+                    const cx = getX(i);
+                    const cyWeight = getYWeight(entry.weightLbs);
+                    const isJabDay = !!entry.jab;
+
+                    return (
+                      <g key={entry.id} className="group cursor-pointer">
+                        {/* Weight Dot */}
+                        <circle 
+                          cx={cx} 
+                          cy={cyWeight} 
+                          r={isJabDay ? "5" : "3"} 
+                          fill={isJabDay ? "#059669" : "#34d399"} 
+                          stroke={isJabDay ? "#10b981" : "#022c22"} 
+                          strokeWidth="2" 
+                        />
+
+                        {/* Jab Marker Icon/Badge above */}
+                        {isJabDay && (
+                          <g transform={`translate(${cx}, ${cyWeight - 14})`}>
+                            <circle r="8" fill="#10b981" />
+                            <text textAnchor="middle" dy="3" fontSize="8" fontWeight="bold" fill="#022c22">💉</text>
+                          </g>
+                        )}
+
+                        {/* Tooltip on Hover */}
+                        <title>
+                          {`Date: ${entry.date}\nWeight: ${entry.weightLbs} lbs (${entry.dailyChange > 0 ? '+' : ''}${entry.dailyChange} lbs)\nEst. Drug: ${entry.estMedInSystem} mg\n${entry.jab ? `Jab #${entry.jab} (${entry.dose})` : ''}`}
+                        </title>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+
+              {/* Chart Footer Info */}
+              <div className="mt-4 pt-3 border-t border-slate-700/60 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+                <div>
+                  <span className="font-semibold text-slate-300">Tracking Period:</span> {processedLogs[0]?.date} to {latestEntry?.date} ({processedLogs.length} logged days)
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-slate-700/60 px-2 py-1 rounded text-slate-300">
+                    Avg Weight Loss: <strong className="text-emerald-400">{(totalLost / (processedLogs.length || 1)).toFixed(2)} lbs/day</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Health Metrics & BMI Card Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* BMI & Height Config */}
+              <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <User className="w-4 h-4 text-teal-400" />
+                    Body Mass Index (BMI)
+                  </h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${bmiMeta.bg} ${bmiMeta.color}`}>
+                    {bmiMeta.category}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-extrabold text-white">{currentBmi}</span>
+                  <span className="text-xs text-slate-400">kg/m²</span>
+                </div>
+
+                <p className="text-xs text-slate-400 mb-4">
+                  Down from <strong className="text-slate-300">{((startWeight * 0.453592) / (heightMeters * heightMeters)).toFixed(1)}</strong> at start of treatment.
+                </p>
+
+                {/* Height adjustment slider */}
+                <div className="space-y-1.5 pt-3 border-t border-slate-700/50">
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>Height:</span>
+                    <span className="font-medium text-slate-200">{userHeightCm} cm ({Math.floor(userHeightCm / 30.48)}' {Math.round((userHeightCm % 30.48) / 2.54)}")</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="140" 
+                    max="210" 
+                    value={userHeightCm} 
+                    onChange={(e) => setUserHeightCm(parseInt(e.target.value))}
+                    className="w-full accent-emerald-500 bg-slate-700 h-1.5 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Target Goal Progress Breakdown */}
+              <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 shadow-sm">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                  <Target className="w-4 h-4 text-rose-400" />
+                  Goal Weight Target
+                </h3>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Target Goal:</span>
+                    <div className="flex items-center gap-1">
+                      <input 
+                        type="number" 
+                        value={targetWeightLbs} 
+                        onChange={(e) => setTargetWeightLbs(parseFloat(e.target.value) || 188)}
+                        className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-right font-bold text-white text-xs"
+                      />
+                      <span className="text-slate-400">lbs</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Journey Progress:</span>
+                    <span className="font-bold text-emerald-400">{percentComplete.toFixed(1)}%</span>
+                  </div>
+
+                  <div className="w-full bg-slate-700/60 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-teal-400 via-emerald-400 to-green-500 h-2.5 rounded-full"
+                      style={{ width: `${percentComplete}%` }}
+                    ></div>
+                  </div>
+
+                  <p className="text-xs text-slate-400 pt-1">
+                    At current rate, projected goal date: <strong className="text-teal-300">Mid-October 2026</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Active Injection Schedule Summary */}
+              <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 shadow-sm">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                  <Syringe className="w-4 h-4 text-indigo-400" />
+                  Injection History
+                </h3>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center py-1 border-b border-slate-700/40">
+                    <span className="text-slate-400">Total Jabs Administered:</span>
+                    <span className="font-bold text-white">{Math.max(0, ...processedLogs.map(l => l.jab || 0))}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-slate-700/40">
+                    <span className="text-slate-400">Current Protocol:</span>
+                    <span className="font-semibold text-indigo-300">2.5 mg / weekly</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-slate-400">Next Scheduled Jab:</span>
+                    <span className="font-semibold text-emerald-400">31/07/2026</span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => openAddModal()}
+                  className="w-full mt-3 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5"
+                >
+                  <Syringe className="w-3.5 h-3.5" /> Log Injection Today
+                </button>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 2: DAILY LOG DATA TABLE */}
+        {activeTab === 'logs' && (
+          <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl overflow-hidden shadow-lg">
+            <div className="p-4 sm:p-5 border-b border-slate-700/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-emerald-400" />
+                  Daily Weight & Injection Log
+                </h2>
+                <p className="text-xs text-slate-400">All registered measurements with computed daily deltas and estimated drug levels.</p>
+              </div>
+
+              <button
+                onClick={() => openAddModal()}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition shadow"
+              >
+                <Plus className="w-4 h-4" /> Add Entry
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-900/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-700">
+                  <tr>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Weight ({unit})</th>
+                    <th className="px-4 py-3">Daily Change</th>
+                    <th className="px-4 py-3">Total Lost</th>
+                    <th className="px-4 py-3">Jab & Dose</th>
+                    <th className="px-4 py-3">Est. Med (mg)</th>
+                    <th className="px-4 py-3">Notes</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {[...processedLogs].reverse().map((entry) => {
+                    const isJab = !!entry.jab;
+                    return (
+                      <tr key={entry.id} className={`hover:bg-slate-700/30 transition ${isJab ? 'bg-indigo-950/20' : ''}`}>
+                        <td className="px-4 py-3 font-medium text-slate-200 whitespace-nowrap">
+                          {entry.date}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
+                          {formatWeight(entry.weightLbs)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {entry.dailyChange < 0 ? (
+                            <span className="text-emerald-400 font-semibold">{entry.dailyChange} lbs</span>
+                          ) : entry.dailyChange > 0 ? (
+                            <span className="text-rose-400 font-semibold">+{entry.dailyChange} lbs</span>
+                          ) : (
+                            <span className="text-slate-500">0.0</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-emerald-400 whitespace-nowrap">
+                          -{formatWeight(entry.totalLost)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {isJab ? (
+                            <span className="inline-flex items-center gap-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-md font-semibold text-xs">
+                              <Syringe className="w-3 h-3 text-indigo-400" /> Jab #{entry.jab} ({entry.dose})
+                            </span>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-indigo-300 whitespace-nowrap">
+                          {entry.estMedInSystem} mg
+                        </td>
+                        <td className="px-4 py-3 max-w-xs truncate text-slate-400">
+                          {entry.notes || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => openAddModal(entry)}
+                            className="text-slate-400 hover:text-emerald-400 p-1 mr-1 transition"
+                            title="Edit"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEntry(entry.id)}
+                            className="text-slate-400 hover:text-rose-400 p-1 transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 inline" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: MEDICATION KINETICS SIMULATOR */}
+        {activeTab === 'kinetics' && (
+          <div className="space-y-6">
+            <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 shadow-lg">
+              <h2 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+                <Activity className="w-5 h-5 text-indigo-400" />
+                Tirzepatide Pharmacokinetics & Half-Life Kinetics
+              </h2>
+              <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                Mounjaro (Tirzepatide) has an elimination half-life of approximately <strong>5 days</strong>. Weekly dosing leads to drug accumulation in the bloodstream until steady-state equilibrium is reached after 4–5 weeks.
+              </p>
+
+              {/* Formula & Kinetic Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-slate-900/60 border border-slate-700/60 p-4 rounded-xl">
+                  <div className="text-xs text-indigo-400 font-semibold mb-1">Elimination Half-Life</div>
+                  <div className="text-2xl font-bold text-white">5 Days</div>
+                  <p className="text-xs text-slate-400 mt-1">~50% clearance every 120 hours</p>
+                </div>
+                <div className="bg-slate-900/60 border border-slate-700/60 p-4 rounded-xl">
+                  <div className="text-xs text-teal-400 font-semibold mb-1">Current Active Concentration</div>
+                  <div className="text-2xl font-bold text-teal-300">{latestEntry.estMedInSystem} mg</div>
+                  <p className="text-xs text-slate-400 mt-1">Estimated residual drug active</p>
+                </div>
+                <div className="bg-slate-900/60 border border-slate-700/60 p-4 rounded-xl">
+                  <div className="text-xs text-emerald-400 font-semibold mb-1">Steady State Range (2.5mg)</div>
+                  <div className="text-2xl font-bold text-white">1.8 - 4.2 mg</div>
+                  <p className="text-xs text-slate-400 mt-1">Expected trough & peak bounds</p>
+                </div>
+              </div>
+
+              {/* Medication Level Curve SVG */}
+              <div className="w-full bg-slate-900/80 p-4 rounded-xl border border-slate-700/50">
+                <div className="text-xs font-semibold text-slate-300 mb-2">Active Drug Level Curve Over Time</div>
+                <svg viewBox={`0 0 ${chartWidth} 180`} className="w-full h-auto min-w-[500px]">
+                  <path 
+                    d={medPath} 
+                    fill="none" 
+                    stroke="#818cf8" 
+                    strokeWidth="3" 
+                  />
+                  {processedLogs.map((entry, i) => {
+                    if (!entry.jab) return null;
+                    const cx = getX(i);
+                    const cy = getYMed(entry.estMedInSystem);
+                    return (
+                      <g key={i}>
+                        <circle cx={cx} cy={cy} r="4" fill="#6366f1" stroke="#ffffff" strokeWidth="1.5" />
+                        <text x={cx} y={cy - 8} fill="#a5b4fc" fontSize="8" textAnchor="middle" fontWeight="bold">
+                          +{entry.dose}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: CLINICAL INSIGHTS */}
+        {activeTab === 'insights' && (
+          <div className="space-y-5">
+            <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 shadow-lg">
+              <h2 className="text-base font-bold text-white flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                Mounjaro Weight Loss Insights Summary
+              </h2>
+
+              <div className="space-y-4 text-xs sm:text-sm text-slate-300">
+                <div className="bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-3">
+                  <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg shrink-0 mt-0.5">
+                    <TrendingDown className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-sm">Consistent Weight Downward Trend</h3>
+                    <p className="text-slate-400 mt-1">
+                      Your weight has dropped from <strong>{formatWeight(startWeight)}</strong> to <strong>{formatWeight(currentWeight)}</strong>, representing a net reduction of <strong className="text-emerald-400">{formatWeight(totalLost)}</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-3">
+                  <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg shrink-0 mt-0.5">
+                    <Syringe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-sm">Medication Absorption & Dose Level</h3>
+                    <p className="text-slate-400 mt-1">
+                      Estimated active drug in your body is currently <strong>{latestEntry.estMedInSystem} mg</strong> following injection #{Math.max(0, ...processedLogs.map(l => l.jab || 0))}.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-3">
+                  <div className="p-2 bg-rose-500/10 text-rose-400 rounded-lg shrink-0 mt-0.5">
+                    <Target className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-sm">Remaining Distance to Target</h3>
+                    <p className="text-slate-400 mt-1">
+                      You have <strong>{formatWeight(toLose)}</strong> left to lose to reach your target of <strong>{formatWeight(targetWeightLbs)}</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Achievement Badges */}
+            <div className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 shadow-lg">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
+                <Award className="w-4 h-4 text-amber-400" />
+                Unlocked Milestones & Badges
+              </h3>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className={`p-3 rounded-xl border ${totalLost >= 5 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-900/40 border-slate-800 text-slate-600'}`}>
+                  <Award className="w-6 h-6 mx-auto mb-1 opacity-90" />
+                  <div className="font-bold text-xs">5 lbs Lost</div>
+                  <div className="text-[10px] opacity-75">{totalLost >= 5 ? 'Unlocked' : 'Locked'}</div>
+                </div>
+
+                <div className={`p-3 rounded-xl border ${totalLost >= 10 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-900/40 border-slate-800 text-slate-600'}`}>
+                  <Award className="w-6 h-6 mx-auto mb-1 opacity-90" />
+                  <div className="font-bold text-xs">10 lbs Lost</div>
+                  <div className="text-[10px] opacity-75">{totalLost >= 10 ? 'Unlocked' : 'Locked'}</div>
+                </div>
+
+                <div className={`p-3 rounded-xl border ${totalLost >= 15 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-900/40 border-slate-800 text-slate-600'}`}>
+                  <Award className="w-6 h-6 mx-auto mb-1 opacity-90" />
+                  <div className="font-bold text-xs">15 lbs Lost</div>
+                  <div className="text-[10px] opacity-75">{totalLost >= 15 ? 'Unlocked' : 'Locked'}</div>
+                </div>
+
+                <div className={`p-3 rounded-xl border ${percentComplete >= 25 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-900/40 border-slate-800 text-slate-600'}`}>
+                  <Award className="w-6 h-6 mx-auto mb-1 opacity-90" />
+                  <div className="font-bold text-xs">25% of Target</div>
+                  <div className="text-[10px] opacity-75">{percentComplete >= 25 ? 'Unlocked' : 'Locked'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* ADD / EDIT MODAL */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in duration-150">
+            <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+              <Scale className="w-5 h-5 text-emerald-400" />
+              {editingEntry ? 'Edit Weight Log Entry' : 'Add Daily Weight & Jab Log'}
+            </h3>
+
+            <form onSubmit={handleSaveEntry} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">Date</label>
+                <input 
+                  type="date" 
+                  value={formDate} 
+                  onChange={(e) => setFormDate(e.target.value)} 
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-medium focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">Weight (lbs)</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  placeholder="e.g. 235.4"
+                  value={formWeight} 
+                  onChange={(e) => setFormWeight(e.target.value)} 
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-medium focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60 space-y-3">
+                <label className="flex items-center gap-2 text-slate-200 font-semibold cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={formIsJab} 
+                    onChange={(e) => setFormIsJab(e.target.checked)}
+                    className="w-4 h-4 rounded accent-emerald-500 cursor-pointer"
+                  />
+                  <span>Administered Injection Today?</span>
+                </label>
+
+                {formIsJab && (
+                  <div>
+                    <label className="block text-slate-400 mb-1">Dosage</label>
+                    <select 
+                      value={formDose} 
+                      onChange={(e) => setFormDose(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white"
+                    >
+                      <option value="2.5mg">2.5 mg</option>
+                      <option value="5mg">5.0 mg</option>
+                      <option value="7.5mg">7.5 mg</option>
+                      <option value="10mg">10.0 mg</option>
+                      <option value="12.5mg">12.5 mg</option>
+                      <option value="15mg">15.0 mg</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">Notes / Side Effects</label>
+                <textarea 
+                  rows="2" 
+                  placeholder="e.g. Injection site, mild nausea, high energy..."
+                  value={formNotes} 
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition shadow"
+                >
+                  Save Entry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
