@@ -691,23 +691,3 @@ function MobileMiniChart({ data, targetWeight }) {
   );
 }
 ```eof
-
-### Key Mobile Optimizations:
-
-* **Thumb-Friendly Bottom Navigation:** Core sections (*Summary*, *Charts*, *Logs*, and *Meds*) are pinned to the bottom of the screen within easy single-hand reach.
-* **Floating Action Button (FAB):** A fixed quick-add `+` button in the bottom right corner opens a bottom sheet modal for logging daily weight and jabs.
-* **Compact Card Hierarchy:** Replaced horizontal tables with a single-column card deck and a $2 \times 2$ glance grid showing active medication (mg), days until next jab, weekly pace, and projected goal date.
-* **Responsive SVG Sparklines:** Optimized SVG chart views tailored to mobile viewport dimensions with clean touch targets.
-
----
-
-### Suggested Next Steps
-
-* **[Add quick-tap symptom and side effect logging buttons](command:prompt?text=Can%20you%20add%20quick-tap%20symptom%20and%20side%20effect%20tags%20to%20the%20mobile%20bottom%20sheet%20modal%3F)**
-* **[Add push-notification style reminders for weekly injection day](command:prompt?text=Can%20you%20add%20a%20reminder%20banner%20alert%20for%20the%20weekly%20injection%20day%3F)**
-
----
-
-### Citing Sources
-* [React Artifact & Canvas Documentation](https://react.dev/)
-* [Tailwind CSS Responsive Design Documentation](https://tailwindcss.com/docs/responsive-design)
