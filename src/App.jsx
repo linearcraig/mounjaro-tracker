@@ -690,4 +690,3 @@ function MobileMiniChart({ data, targetWeight }) {
     </svg>
   );
 }
-```eof
